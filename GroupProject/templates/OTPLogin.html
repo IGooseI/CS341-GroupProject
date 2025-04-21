@@ -1,0 +1,16 @@
+<link rel="stylesheet" href="/static/style.css" type="text/css">
+
+{% block body %}
+<div class="OTPlogin">
+    <div class="login-screen">
+        <div class="app-title">
+            <h1>OTP Login</h1>
+        </div>
+        <form method="POST" action="/OTPLogin">
+            <label for="entered_code">Enter OTP:</label>
+            <input type="text" name="entered_code" id="entered_code" required>
+            <button type="submit">Verify OTP</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

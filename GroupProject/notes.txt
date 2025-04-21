@@ -1,0 +1,40 @@
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+	 session['logged_in'] = False
+            return render_template('OTPLogin.html')
+        elif request.method == 'POST':
+            return redirect('/login', error_message = None)
+ error_message = "Invalid Username and or Password. Retry."
+return render_template('login.html', error_message=error_message)
+
+
+
+@app.route('/OTPlogin', methods=['GET', 'POST'])
+    def OTPlogin():
+        try:
+            global lockout_time, OTP_code
+            print("Accessing /OTPLogin route")
+            if not lockout_time or datetime.now() >= lockout_time:
+                print("Lockout expired or not Active")
+                return redirect('/login')
+            if OTP_code is None:
+                print("Generating New OTP")
+                OTP_code = random.randint(10000, 99999)
+                send_msg(OTP_code)
+                print(f"Your OTP code is: {OTP_code}") 
+                flash(f'The OTP Code has been sent to Email: {emailcred.TO}')
+            
+            if request.method == 'POST':
+                entered_code = request.form.get('entered_code') # Note: Same as input command just requesting entered code from the HTML file space
+                print(f"User Entered OTP: {entered_code}")
+                if entered_code == str(OTP_code):
+                    lockout_time = None
+                    flash('2FA Code is Correct!! Please log in Again')
+                    #sleep(5)
+                    return redirect('/login')
+                else:
+                    flash('Invalid OTP Code. Please Try Again.')
+        except Exception as e:
+            print(f"Error in /OTPLogin: {e}")
+            flash("An error Occured.")
+            return redirect('/login')

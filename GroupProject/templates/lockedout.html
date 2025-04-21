@@ -1,0 +1,57 @@
+<link rel="stylesheet" href="/static/style.css" type="text/css">
+
+{% block body %}
+    <div class="LockedOut">
+        <div class="OTPlogin-screen">
+            <div class="app-title">
+                <h1>Locked Out</h1>
+            </div>
+            <div class="login-form">
+                <div class="control-group">
+					
+                    <p style="font-size: 1.2em; text-align: center;">
+                        You have been locked out due to multiple failed login attempts.
+                    </p>
+                    <p style="font-size: 1.5em; font-weight: bold; text-align: center; color: red;">
+                        Try again in: <span id="timer">5:00</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+		// JS
+        // Countdown Timer
+        let countdown = 15; // 5 minutes
+        const timerElement = document.getElementById('timer'); // Dynamically updates the timer on Screen with const document.getElementByID('timer') function from DOM
+
+        function updateTimer() 
+        {
+			const minutes = Math.floor(countdown / 60);
+			const seconds = countdown % 60;
+			timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+			if (countdown > 0) 
+			{
+				countdown--;
+			} else 
+			{
+				// Redirect to login only if the session is still locked
+				fetch('/session-status')
+					.then(response => response.json())
+					.then(data => 
+					{
+						if (data.locked) 
+						{
+							window.location.href = "/OTPLogin";
+						}
+
+					});
+			}
+		}
+		
+        // Update the timer every second
+        setInterval(updateTimer, 1000);
+    </script>
+{% endblock %}
