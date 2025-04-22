@@ -207,6 +207,14 @@ try:
     
     @app.route("/userCreate")
     def user_Create():
+        render_template('userCreate.html')
+        if request.method == 'POST':
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
+            email = request.form.get('email', '')
+        with open('users.json', 'r') as file:
+            data = json.load(file)
+        
         
         
     
