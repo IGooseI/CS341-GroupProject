@@ -3,7 +3,7 @@
         <title>Control RPi Web Server User Create</title>
     </head>
 
-    <form action="/createUser" method="POST">
+    <form action="/userCreate" method="POST">
         <div class="control-group">	
             <input type="text" class="login-field" value="" placeholder="username" name="username">
             <label class="login-field-icon fui-user" for="login-name"></label>
@@ -19,4 +19,15 @@
             <label class="login-field-icon fui-user" for="login-email"></label>
         </div>
 
+        <br>
+            <input type="submit" value="Create User" class="btn btn-primary btn-large btn-block">
+		<br>
+        {% if error_message %}
+						
+				<div class="control-group">
+					<p style="color: red; text-align: center;">
+						{{error_message}}
+					</p>
+				</div>
+		{% endif %}
     </form>

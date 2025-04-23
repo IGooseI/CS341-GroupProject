@@ -206,39 +206,31 @@ try:
         return home()
     
     @app.route("/userCreate", methods=['GET', 'POST'])
-    def user_Create():
-        render_template('userCreate.html')
+    def userCreate():
+        username = ""
+        password = ""
+        email = ""
+        error_message = ""
         if request.method == 'POST':
             username = request.form.get('username', '')
             password = request.form.get('password', '')
             email = request.form.get('email', '')
-        created_users = {"Username: " ,username , "Password: ", password, "Email: ", email}
-        filePath = "users.json"
-        with open(filePath, "rb") as file:
-            users = json.dump(username, password, email)
-        entered_username = "entered_username"
-        entered_email = "entered_email"
-        users.append(created_users)
-        while True:
-            if any(users(username)) == username:
+            created_users = {"Username: ": username , "Password: ": password, "Email: ": email}
+            filePath = "users.json"
+            with open(filePath, "w") as file:
+                users = json.dump(created_users, file ,indent=4)
+            users.append(created_users)
+            with open(filePath, "w") as file:
+                users = json.load(created_users, file)
+            if any(users['username']) == username:
                 error_message = "There is Already a User with that Name. Please Enter Another"
-            if any(users(email)) == email:
+            if any(users['email']) == email:
                 error_message = "This Email is already linked with another account. Try a Different one"
-        
-
-            
-        
+            return render_template('userCreate.html')
+        return render_template("/login")
 
 
 
-
-        
-    
-    
-    
-    
-    
-    
     @app.route("/main")
     def main():
         # check if the user logged_in to the system
