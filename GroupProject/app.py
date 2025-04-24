@@ -205,29 +205,42 @@ try:
         tries = 3
         return home()
     
+    def add_new_user(users, username, password, email, filePath):
+        users.append({'Username': username, 'Password': password, 'Email': email})
+        with open(filePath, "w") as file:
+            json.dump(users, file, indent=4)
+
     @app.route("/userCreate", methods=['GET', 'POST'])
     def userCreate():
         username = ""
         password = ""
         email = ""
-        error_message = ""
+        error_message = None
         if request.method == 'POST':
             username = request.form.get('username', '')
             password = request.form.get('password', '')
             email = request.form.get('email', '')
-            created_users = {"Username: ": username , "Password: ": password, "Email: ": email}
             filePath = "users.json"
-            with open(filePath, "w") as file:
-                users = json.dump(created_users, file ,indent=4)
-            users.append(created_users)
-            with open(filePath, "w") as file:
-                users = json.load(created_users, file)
-            if any(users['username']) == username:
-                error_message = "There is Already a User with that Name. Please Enter Another"
-            if any(users['email']) == email:
-                error_message = "This Email is already linked with another account. Try a Different one"
-            return render_template('userCreate.html')
-        return render_template("/login")
+            try:
+                with open(filePath, "r") as file:
+                    users = json.load(file)
+            except FileNotFoundError:
+                users = []
+
+            if any(user['Username'] == username for user in users):
+                error_message = "There is already a user with that name. Please enter another."
+            elif any(user['Email'] == email for user in users):
+                error_message = "This email is already linked with another account. Try a different one."
+            else:
+                # Append the new user and save back to the file
+                add_new_user(users, username, password, email, filePath)
+                flash("User created successfully!")
+            if any(user['Username'] == username for user in users):
+                error_message = "There is already a user with that name. Please enter another."
+            elif any(user['Email'] == email for user in users):
+                return render_template("login.html", error_message=error_message or "")
+        return render_template('userCreate.html')
+        
 
 
 
