@@ -240,9 +240,36 @@ try:
             elif any(user['Email'] == email for user in users):
                 return render_template("login.html", error_message=error_message or "")
         return render_template('userCreate.html')
-        
 
+    @app.route("/viewUsers")    
+    def view_users():
+        try:
+            with open("users.json", "r") as file:
+                users = json.load(file)
+            return users
+        except FileNotFoundError:
+            return []
 
+    @app.route("/deleteUser", methods=['GET', 'POST'])
+    def delete_user():
+        if request.method == 'POST':
+            username = request.form.get('username', '')
+            filePath = "users.json"
+            try:
+                with open(filePath, "r") as file:
+                    users = json.load(file)
+            except FileNotFoundError:
+                users = []
+
+            # Filter out the user to be deleted
+            users = [user for user in users if user['Username'] != username]
+
+            # Save the updated list back to the file
+            with open(filePath, "w") as file:
+                json.dump(users, file, indent=4)
+
+            flash("User deleted successfully!")
+        return render_template('deleteUser.html')
 
     @app.route("/main")
     def main():
