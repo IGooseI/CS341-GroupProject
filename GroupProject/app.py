@@ -206,9 +206,11 @@ try:
         return home()
     
     def add_new_user(users, username, password, email, filePath):
+        print("add_new_user has been called")
         users.append({'Username': username, 'Password': password, 'Email': email})
         with open(filePath, "w") as file:
             json.dump(users, file, indent=4)
+        
 
     @app.route("/userCreate", methods=['GET', 'POST'])
     def userCreate():
@@ -224,21 +226,22 @@ try:
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
-            except FileNotFoundError:
+            except (FileNotFoundError, json.decoder.JSONDecodeError):
+                print("Its going here")
                 users = []
 
             if any(user['Username'] == username for user in users):
                 error_message = "There is already a user with that name. Please enter another."
             elif any(user['Email'] == email for user in users):
                 error_message = "This email is already linked with another account. Try a different one."
-            else:
-                # Append the new user and save back to the file
+            else: 
+                #Append the new user and save back to the file
                 add_new_user(users, username, password, email, filePath)
                 flash("User created successfully!")
             if any(user['Username'] == username for user in users):
                 error_message = "There is already a user with that name. Please enter another."
             elif any(user['Email'] == email for user in users):
-                return render_template("login.html", error_message=error_message or "")
+                return render_template("userCreate.html", error_message=error_message or "")
         return render_template('userCreate.html')
 
     @app.route("/viewUsers")    
@@ -258,7 +261,7 @@ try:
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
-            except FileNotFoundError:
+            except (FileNotFoundError, json.decoder.JSONDecodeError):
                 users = []
 
             # Filter out the user to be deleted
