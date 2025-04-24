@@ -5,18 +5,23 @@
 
     <form action="/userCreate" method="POST">
         <div class="control-group">	
-            <input type="text" class="login-field" value="" placeholder="username" name="username">
-            <label class="login-field-icon fui-user" for="login-name"></label>
+            <input type="text" class="login-field" value="" placeholder="username" name="username" required>
+            <label class="login-field-icon fui-user" for="username">Username</label>
         </div>
 
         <div class="control-group">	
-            <input type="text" class="login-field" value="" placeholder="password" name="password">
-            <label class="login-field-icon fui-user" for="login-pass"></label>
+            <input type="password" class="login-field" value="" placeholder="password" name="password" required>
+            <label class="login-field-icon fui-user" for="password">Password</label>
         </div>
 
         <div class="control-group">	
-            <input type="text" class="input-field" value="" placeholder="EMAIL" name="email">
-            <label class="login-field-icon fui-user" for="login-email"></label>
+            <input type="text" class="input-field" value="" placeholder="EMAIL" name="email" required>
+            <label class="login-field-icon fui-user" for="email">Email</label>
+        </div>
+
+        <div class="control-group">
+            <input type = "checkbox" id="isAdmin" name="isAdmin" value="true">
+            <label for="admin">Make Account Admin?</label>
         </div>
 
         <br>
@@ -31,3 +36,5 @@
 				</div>
 		{% endif %}
     </form>
+    <a href="/main" class="btn btn-block btn-lg btn-primary" role="button">Exit</a>
+    <br>
