@@ -96,6 +96,8 @@ try:
         if not session.get('logged_in'):
             # if the 'logged_in' is not True, the user will be directed to the login.html page
             return render_template('login.html')
+        elif session.get('is_admin'):
+            return render_template('main_admin.html', **templateData)
         else:
             #return "Hello Boss! <a href="/logout">Logout</a>"
             return render_template('main.html', **templateData)
@@ -103,14 +105,15 @@ try:
     @app.route('/login', methods=['GET', 'POST'])
     def do_admin_login():
         global tries, lockout_time, OTP_code
-        
+        filePath = "users.json"
         if request.method == 'POST':
             username = request.form.get('username', '')
             password = request.form.get('password', '')
-
+            with open(filePath, "r") as file:
+                    users = json.load(file)
             #Check credentials
             try:
-                if username in stored_passwords:
+                if username or 'username' in stored_passwords or filePath:
                     hashed_password, salt = stored_passwords[username]
                     salted_password = password.encode() + bytes.fromhex(salt)
                     enter_hash = hashlib.sha256(salted_password).hexdigest()
@@ -201,13 +204,14 @@ try:
         # update the session value 'logged_in' to False
         session['logged_in'] = False
         session['lockedout'] = False
+        session['is_admin'] = False
 
         tries = 3
         return home()
     
-    def add_new_user(users, username, password, email, filePath):
+    def add_new_user(users, username, password, email, is_admin ,filePath):
         print("add_new_user has been called")
-        users.append({'Username': username, 'Password': password, 'Email': email})
+        users.append({'Username': username, 'Password': password, 'Email': email, 'Admin': is_admin})
         with open(filePath, "w") as file:
             json.dump(users, file, indent=4)
         
@@ -217,17 +221,19 @@ try:
         username = ""
         password = ""
         email = ""
+        is_admin = False
         error_message = None
         if request.method == 'POST':
             username = request.form.get('username', '')
             password = request.form.get('password', '')
             email = request.form.get('email', '')
+            is_admin = request.form.get('is_admin')
             filePath = "users.json"
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
             except (FileNotFoundError, json.decoder.JSONDecodeError):
-                print("Its going here")
+                print("Its going here JSON Decoder")
                 users = []
 
             if any(user['Username'] == username for user in users):
@@ -236,7 +242,7 @@ try:
                 error_message = "This email is already linked with another account. Try a different one."
             else: 
                 #Append the new user and save back to the file
-                add_new_user(users, username, password, email, filePath)
+                add_new_user(users, username, password, email, is_admin ,filePath)
                 flash("User created successfully!")
             if any(user['Username'] == username for user in users):
                 error_message = "There is already a user with that name. Please enter another."
@@ -272,7 +278,7 @@ try:
                 json.dump(users, file, indent=4)
 
             flash("User deleted successfully!")
-        return render_template('deleteUser.html')
+        return render_template('viewUser.html')
 
     @app.route("/main")
     def main():
