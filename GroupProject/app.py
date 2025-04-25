@@ -275,9 +275,9 @@ try:
         try:
             with open("users.json", "r") as file:
                 users = json.load(file)
-            return render_template("view_users.html", users=users)
+            return render_template("viewUsers.html", users=users)
         except FileNotFoundError:
-            return render_template("view_users.html", users=[])
+            return render_template("viewUsers.html", users=[])
 
     @app.route("/deleteUser", methods=['GET', 'POST'])
     def delete_user():
