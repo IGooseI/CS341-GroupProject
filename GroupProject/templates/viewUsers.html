@@ -3,7 +3,27 @@
         <title>Control RPi Web Server View Users</title>
     </head>
     <body>
-        {% for user in users %}
-            
-        {% endfor %}
+        <h1>Users List</h1>
+        {% if users %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Admin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.admin }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No users found.</p>
+        {% endif %}
     </body>
