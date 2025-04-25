@@ -1,0 +1,9 @@
+[
+    {
+        "Username": "roger",
+        "Password": "a34b9164c83eecb7b2b4ee99513e4e002b75ec06efeae05ed0e5069be4e4277f",
+        "Email": "roger123@gmail.com",
+        "Admin": true,
+        "Salt": "0afdca444a0d5d8da596e145500767e9"
+    }
+]

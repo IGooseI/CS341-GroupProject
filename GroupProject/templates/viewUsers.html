@@ -16,9 +16,9 @@
                 <tbody>
                     {% for user in users %}
                         <tr>
-                            <td>{{ user.name }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.admin }}</td>
+                            <td>{{ user.Username }}</td>
+                            <td>{{ user.Email }}</td>
+                            <td>{{ user.Admin }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -26,4 +26,6 @@
         {% else %}
             <p>No users found.</p>
         {% endif %}
+        <a href="/main" class="btn btn-block btn-lg btn-primary" role="button">Exit</a>
+
     </body>

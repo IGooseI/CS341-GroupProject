@@ -23,10 +23,12 @@ import secrets
 import smtplib
 import emailcred
 import hashlib
+from hashlib import sha256
 import random
 from datetime import datetime
 import hashpasswords
 import json
+import os
 
 try:
     # This creates an instance of a Flask application
@@ -94,37 +96,36 @@ try:
             # If the 'logged_in' is not True, the user will be directed to the login.html page
             return render_template('login.html')
         elif session.get('is_admin'):
-            return render_template('main_admin.html')
+            return redirect('/main_admin')
         else:
             # Return the main page for non-admin users
-            return render_template('main.html')
+            return redirect('/main')
     
     @app.route('/login', methods=['GET', 'POST'])
     def do_admin_login():
-        global tries
         filePath = "users.json"
-        error_message = None
-        if request.form['password'] == 'roger123' and request.form['username'] == 'roger':
-            session['logged_in'] = True
-            session['is_admin'] = True
+        error_message = ""
+
+        # Initialize 'tries' in session if not already set
+        if 'tries' not in session:
+            session['tries'] = 3
+
+        if session.get('lockedout'):
+            flash("Your account is locked due to too many failed attempts.")
+            return redirect('/OTPLogin')
+
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '').strip()
             print(f"Entered username: {username}")
             print(f"Entered password: {password}")
 
-            # Check hardcoded credentials first
-            if username == 'roger' and password == 'roger123':
-                session['logged_in'] = True
-                session['is_admin'] = True
-                tries = 3
-            # Check dynamically stored users in users.json
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
 
-                # Find the user by username
                 user = next((u for u in users if u['Username'] == username), None)
+
                 if user:
                     hashed_password = user['Password']
                     salt = user['Salt']
@@ -132,9 +133,9 @@ try:
                         session['logged_in'] = True
                         session['username'] = username
                         session['is_admin'] = user.get('Admin', False)
-                        tries = 3  # Reset tries
+                        session['tries'] = 3  # reset tries
                         flash('Login successful!')
-                        return redirect('/main')
+                        return redirect(url_for('home'))
                     else:
                         error_message = "Incorrect password."
                 else:
@@ -143,21 +144,17 @@ try:
             except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
                 error_message = "User database not found or corrupted. Please contact the admin."
                 flash(error_message)
-                print(error_message, {e})
+                print(error_message, e)
                 return render_template('login.html', error_message=error_message)
 
-            # Handle failed login attempts only if username and password validation fails
-            if error_message:
-                tries -= 1
-                if tries <= 0:
-                    session['lockedout'] = True
-                    flash('Too many failed attempts. Your account is locked.')
-                    return redirect('/OTPLogin')  # Redirect to OTP login
+            # Handle failed login attempt
+            session['tries'] -= 1
+            if session['tries'] <= 0:
                 session['lockedout'] = True
                 flash('Too many failed attempts. Your account is locked.')
-                return redirect('/OTPLogin')  # Redirect to OTP login
+                return redirect('/OTPLogin')
 
-            flash(f"{error_message} Tries remaining: {tries}")
+            flash(f"{error_message} Tries remaining: {session['tries']}")
 
         return render_template('login.html', error_message=error_message)
 
@@ -171,7 +168,7 @@ try:
         try:
             global lockout_time, OTP_code
             if session.get('lockedout', False):
-                return render_template('lockedout.html')
+                return home()
             print("Accessing /OTPLogin route")
             if OTP_code is None or session.get('otp_attempted', False):
                 print("Generating New OTP")
@@ -232,7 +229,9 @@ try:
     
     def add_new_user(users, username, password, email, is_admin, filePath):
         print("add_new_user has been called")
-        hashed_password, salt = hashpasswords.hash_password(password)
+        salt = os.urandom(16).hex()
+        salted_password = password.encode() + salt.encode()
+        hashed_password = sha256(salted_password).hexdigest()
         users.append({
             'Username': username,
             'Password': hashed_password,
@@ -256,33 +255,15 @@ try:
         error_message = None
         filePath = "users.json"
         if request.method == 'POST':
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '').strip()
-            email = request.form.get('email', '').strip()
-            is_admin = bool(request.form.get('is_admin', False))
-
-            # Validate username
-            if not username.isalnum() or len(username) < 3:
-                error_message = "Username must be at least 3 characters long and contain only letters and numbers."
-                return render_template('userCreate.html', error_message=error_message)
-
-            # Validate password
-            if len(password) < 8 or not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
-                error_message = "Password must be at least 8 characters long, contain both letters and numbers."
-                return render_template('userCreate.html', error_message=error_message)
-
-            # Validate email
-            if "@" not in email or "." not in email.split("@")[-1]:
-                error_message = "Invalid email format. Please enter a valid email address."
-                return render_template('userCreate.html', error_message=error_message)
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
+            email = request.form.get('email', '')
+            is_admin = bool(request.form.get("Admin", False))
             
-            try:
-                with open(filePath, "r") as file:
-                    users = json.load(file)
-            except (FileNotFoundError, json.decoder.JSONDecodeError):
-                users = [{"Username": 'roger', "Password" : 'roger123'}]  #empty list if file not found or invalid
 
-            
+            file = open(filePath, "r")
+            users = json.load(file)
+
             if any(user['Username'] == username for user in users):
                 error_message = "There is already a user with that name. Please enter another."
             elif any(user['Email'] == email for user in users):
@@ -291,7 +272,7 @@ try:
                 
                 add_new_user(users, username, password, email, is_admin, filePath)
                 flash("User created successfully!")
-                return redirect('/viewUsers')  #Redirect to view users page
+                return redirect('/main')  #Redirect to view users page
 
         return render_template('userCreate.html', error_message=error_message)
 
@@ -345,6 +326,26 @@ try:
             
             # Pass the template data into the template main.html and return it to the user
             return render_template('main.html', **templateData)
+    
+    @app.route("/main_admin")
+    def main_admin():
+        # check if the user logged_in to the system
+        if not session.get('logged_in'):
+            return render_template('login.html')
+        else:
+            # For each pin, read the pin state and store it in the pins dictionary:
+            for pin in pins:
+                LED_name = pins[pin]['var_name']
+                pins[pin]['state'] = LED_name.is_lit
+                print("in main pin {pin} is: ", pins[pin]['state'])
+              
+            # Put the pin dictionary into the template data dictionary:
+            templateData = {
+              'pins' : pins
+              }
+            
+            # Pass the template data into the template main.html and return it to the user
+            return render_template('main_admin.html', **templateData)
 
     # The function below is executed when someone requests a URL with the pin number and action in it:
     @app.route("/<changePin>/<action>")
