@@ -61,8 +61,7 @@ try:
     OTP_code = None
 
     try:
-        stored_passwords = {"roger": hashpasswords.hash_password("roger123")}
-        hashpasswords.password_store(stored_passwords)
+        stored_passwords = {"roger": hashpasswords.hash_password("roger123")}  # Assuming hash_password returns a single value
     except Exception as e:
         print(f"Error storing passwords: {e}")
     # Create a dictionary called pins to store the pin number, name, and pin state:
@@ -89,67 +88,79 @@ try:
     @app.route("/")
     def home():
         # This checks if the retrieved session value 'logged_in' is True
-        if not session.get('lockedout'):
-            return render_template('login.html')
-        else:
+        if session.get('lockedout'):
             return render_template('lockedout.html')
-        if not session.get('logged_in'):
-            # if the 'logged_in' is not True, the user will be directed to the login.html page
+        elif not session.get('logged_in'):
+            # If the 'logged_in' is not True, the user will be directed to the login.html page
             return render_template('login.html')
         elif session.get('is_admin'):
-            return render_template('main_admin.html', **templateData)
+            return render_template('main_admin.html')
         else:
-            #return "Hello Boss! <a href="/logout">Logout</a>"
-            return render_template('main.html', **templateData)
+            # Return the main page for non-admin users
+            return render_template('main.html')
     
     @app.route('/login', methods=['GET', 'POST'])
     def do_admin_login():
         global tries
         filePath = "users.json"
         error_message = None
-
+        if request.form['password'] == 'roger123' and request.form['username'] == 'roger':
+            session['logged_in'] = True
+            session['is_admin'] = True
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '').strip()
+            print(f"Entered username: {username}")
+            print(f"Entered password: {password}")
 
+            # Check hardcoded credentials first
+            if username == 'roger' and password == 'roger123':
+                session['logged_in'] = True
+                session['is_admin'] = True
+                tries = 3
+            # Check dynamically stored users in users.json
             try:
-                # Load users from the JSON file
                 with open(filePath, "r") as file:
                     users = json.load(file)
 
-                #Find the user by username I know its weird its called a generator expression had to research it
+                # Find the user by username
                 user = next((u for u in users if u['Username'] == username), None)
-                #next() iterates through each user (python function)
                 if user:
-                    print("its not finding the password")
                     hashed_password = user['Password']
-                    print("happens after")
                     salt = user['Salt']
                     if hashpasswords.verify_password(password, hashed_password, salt):
                         session['logged_in'] = True
                         session['username'] = username
                         session['is_admin'] = user.get('Admin', False)
-                        tries = 3  # Reset tries on successful login
+                        tries = 3  # Reset tries
                         flash('Login successful!')
-                        return redirect('/main')  # Redirect to main page
+                        return redirect('/main')
                     else:
-                        error_message = "Incorrect password. Please try again."
+                        error_message = "Incorrect password."
                 else:
-                    error_message = "Username not found. Please try again."
+                    error_message = "Username not found."
 
-            except (FileNotFoundError, json.decoder.JSONDecodeError):
+            except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
                 error_message = "User database not found or corrupted. Please contact the admin."
+                flash(error_message)
+                print(error_message, {e})
+                return render_template('login.html', error_message=error_message)
 
-            
-            tries -= 1
-            if tries <= 0:
+            # Handle failed login attempts only if username and password validation fails
+            if error_message:
+                tries -= 1
+                if tries <= 0:
+                    session['lockedout'] = True
+                    flash('Too many failed attempts. Your account is locked.')
+                    return redirect('/OTPLogin')  # Redirect to OTP login
                 session['lockedout'] = True
                 flash('Too many failed attempts. Your account is locked.')
-                return redirect('/OTPLogin')
+                return redirect('/OTPLogin')  # Redirect to OTP login
 
             flash(f"{error_message} Tries remaining: {tries}")
 
-        return render_template('login.html', error_message = error_message)
+        return render_template('login.html', error_message=error_message)
+
 
     
             
@@ -245,16 +256,31 @@ try:
         error_message = None
         filePath = "users.json"
         if request.method == 'POST':
-            username = request.form.get('username', '')
-            password = request.form.get('password', '')
-            email = request.form.get('email', '')
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            email = request.form.get('email', '').strip()
             is_admin = bool(request.form.get('is_admin', False))
+
+            # Validate username
+            if not username.isalnum() or len(username) < 3:
+                error_message = "Username must be at least 3 characters long and contain only letters and numbers."
+                return render_template('userCreate.html', error_message=error_message)
+
+            # Validate password
+            if len(password) < 8 or not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
+                error_message = "Password must be at least 8 characters long, contain both letters and numbers."
+                return render_template('userCreate.html', error_message=error_message)
+
+            # Validate email
+            if "@" not in email or "." not in email.split("@")[-1]:
+                error_message = "Invalid email format. Please enter a valid email address."
+                return render_template('userCreate.html', error_message=error_message)
             
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
             except (FileNotFoundError, json.decoder.JSONDecodeError):
-                users = []  #empty list if file not found or invalid
+                users = [{"Username": 'roger', "Password" : 'roger123'}]  #empty list if file not found or invalid
 
             
             if any(user['Username'] == username for user in users):
