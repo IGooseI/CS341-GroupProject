@@ -104,43 +104,53 @@ try:
     
     @app.route('/login', methods=['GET', 'POST'])
     def do_admin_login():
-        global tries, lockout_time, OTP_code
+        global tries
         filePath = "users.json"
-        if request.method == 'POST':
-            username = request.form.get('username', '')
-            password = request.form.get('password', '')
-            with open(filePath, "r") as file:
-                    users = json.load(file)
-            #Check credentials
-            try:
-                if username or 'username' in stored_passwords or filePath:
-                    hashed_password, salt = stored_passwords[username]
-                    salted_password = password.encode() + bytes.fromhex(salt)
-                    enter_hash = hashlib.sha256(salted_password).hexdigest()
-                    
-                    if enter_hash == hashed_password:
-                        session['logged_in'] = True
-                        tries = 3  # Reset tries
-                        flash('Login successful!')
-                        return redirect('/main')
-                    else:
-                        flash('Incorrect Password.')
-                else:
-                    flash('Username not Found')
-            except Exception as e:
-                flash(f"Error during Login: {e}")
-                
-            tries -= 1  # Decrement tries
-            if tries > 0:
-                flash(f"Incorrect Password or Username. Try Again. Tries Left: {tries}")
-                return render_template('login.html')
-                
-            else:
-                flash('Account locked. Please complete OTP Login.')
-                print("System is Locked Out")
-                return render_template('lockedout.html')
+        error_message = None
 
-        return render_template('login.html')
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+
+            try:
+                # Load users from the JSON file
+                with open(filePath, "r") as file:
+                    users = json.load(file)
+
+                #Find the user by username I know its weird its called a generator expression had to research it
+                user = next((u for u in users if u['Username'] == username), None)
+                #next() iterates through each user (python function)
+                if user:
+                    print("its not finding the password")
+                    hashed_password = user['Password']
+                    print("happens after")
+                    salt = user['Salt']
+                    if hashpasswords.verify_password(password, hashed_password, salt):
+                        session['logged_in'] = True
+                        session['username'] = username
+                        session['is_admin'] = user.get('Admin', False)
+                        tries = 3  # Reset tries on successful login
+                        flash('Login successful!')
+                        return redirect('/main')  # Redirect to main page
+                    else:
+                        error_message = "Incorrect password. Please try again."
+                else:
+                    error_message = "Username not found. Please try again."
+
+            except (FileNotFoundError, json.decoder.JSONDecodeError):
+                error_message = "User database not found or corrupted. Please contact the admin."
+
+            
+            tries -= 1
+            if tries <= 0:
+                session['lockedout'] = True
+                flash('Too many failed attempts. Your account is locked.')
+                return redirect('/OTPLogin')
+
+            flash(f"{error_message} Tries remaining: {tries}")
+
+        return render_template('login.html', error_message = error_message)
+
     
             
                 
@@ -209,11 +219,21 @@ try:
         tries = 3
         return home()
     
-    def add_new_user(users, username, password, email, is_admin ,filePath):
+    def add_new_user(users, username, password, email, is_admin, filePath):
         print("add_new_user has been called")
-        users.append({'Username': username, 'Password': password, 'Email': email, 'Admin': is_admin})
+        hashed_password, salt = hashpasswords.hash_password(password)
+        users.append({
+            'Username': username,
+            'Password': hashed_password,
+            'Salt': salt,
+            'Email': email,
+            'Admin': is_admin
+        })
+        
+       
         with open(filePath, "w") as file:
             json.dump(users, file, indent=4)
+
         
 
     @app.route("/userCreate", methods=['GET', 'POST'])
@@ -223,32 +243,32 @@ try:
         email = ""
         is_admin = False
         error_message = None
+        filePath = "users.json"
         if request.method == 'POST':
             username = request.form.get('username', '')
             password = request.form.get('password', '')
             email = request.form.get('email', '')
-            is_admin = request.form.get('is_admin')
-            filePath = "users.json"
+            is_admin = bool(request.form.get('is_admin', False))
+            
             try:
                 with open(filePath, "r") as file:
                     users = json.load(file)
             except (FileNotFoundError, json.decoder.JSONDecodeError):
-                print("Its going here JSON Decoder")
-                users = []
+                users = []  #empty list if file not found or invalid
 
+            
             if any(user['Username'] == username for user in users):
                 error_message = "There is already a user with that name. Please enter another."
             elif any(user['Email'] == email for user in users):
                 error_message = "This email is already linked with another account. Try a different one."
-            else: 
-                #Append the new user and save back to the file
-                add_new_user(users, username, password, email, is_admin ,filePath)
+            else:
+                
+                add_new_user(users, username, password, email, is_admin, filePath)
                 flash("User created successfully!")
-            if any(user['Username'] == username for user in users):
-                error_message = "There is already a user with that name. Please enter another."
-            elif any(user['Email'] == email for user in users):
-                return render_template("userCreate.html", error_message=error_message or "")
-        return render_template('userCreate.html')
+                return redirect('/viewUsers')  #Redirect to view users page
+
+        return render_template('userCreate.html', error_message=error_message)
+
 
     @app.route("/viewUsers")    
     def view_users():

@@ -17,3 +17,6 @@ def passwordLoader():
 		password = json.load(file)
 	return password
 	
+def verify_password(password, hashed_password, salt):
+    salted_password = password.encode() + salt.encode()
+    return hashlib.sha256(salted_password).hexdigest() == hashed_password
